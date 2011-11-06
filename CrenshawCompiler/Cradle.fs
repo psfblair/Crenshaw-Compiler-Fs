@@ -52,10 +52,33 @@ let emitLn s =
    emit s
    printfn("")
 
+// Get a single number
+let term() = getNum() |> sprintf "MOVE #%c,D0" |> emitLn
+
+let add() =
+   matches '+'
+   term()
+   emitLn "ADD (SP)+,D0"
+
+let subtract() =
+   matches '-'
+   term()
+   emitLn "SUB (SP)+,D0"
+   emitLn "NEG D0"
+
+let expression() = 
+   term()
+   while look.Equals '+' || look.Equals '-' do
+      emitLn "MOVE D0,-(SP)"
+      if look.Equals('+') then
+         add()
+      elif look.Equals('-') then
+         subtract()
+      else
+         expected "Addop" 
+
 // Initialize - main program
 let init() = getChar()
-
-let expression() = getNum() |> sprintf "MOVE #%c,D0" |> emitLn
 
 [<EntryPoint>]
 let Main args = 
