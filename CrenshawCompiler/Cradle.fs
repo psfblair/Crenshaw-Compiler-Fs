@@ -38,19 +38,29 @@ let isAlpha c = Array.exists (fun elem -> (System.Char.ToUpper c).Equals elem) [
 // Recognize a Decimal Digit
 let isDigit c = Array.exists (fun elem -> c.Equals elem) [|'0'..'9'|]
 
+// Recognize an Alphanumeric
+let isAlNum c =
+   isAlpha c || isDigit c
+
 // Get an Identifier
 let getName() = 
    if not (isAlpha look) then expected "Name"
-   let returnVal = System.Char.ToUpper  look
-   getChar()
-   returnVal
+   let mutable token = ""
+   while isAlNum look do
+      token <- token + (System.Char.ToUpper look).ToString()
+      getChar()
+   done
+   token
 
 // Get a Number
 let getNum() = 
    if not (isDigit look) then expected "Integer"
-   let returnVal = look
-   getChar()
-   returnVal
+   let mutable value = ""
+   while isDigit look do
+      value <- value + (System.Char.ToUpper look).ToString()
+      getChar()
+   done
+   value
 
 // Parse and Translate an Identifier
 let ident() =
@@ -58,9 +68,9 @@ let ident() =
    if look.Equals '(' then
       matchThenFetchNextChar '('
       matchThenFetchNextChar ')'
-      sprintf "BSR %c" name |> emitLn 
+      sprintf "BSR %s" name |> emitLn 
    else
-      sprintf "MOVE %c(PC),D0" name |> emitLn
+      sprintf "MOVE %s(PC),D0" name |> emitLn
 
 // Horrible big circle of functions: let rec... and ... and... etc.
 // Result of recursive descent.
@@ -73,7 +83,7 @@ let rec factor() =
    else if isAlpha look then
       ident()
    else
-      getNum() |> sprintf "MOVE #%c,D0" |> emitLn
+      getNum() |> sprintf "MOVE #%s,D0" |> emitLn
 
 and multiply() =
    matchThenFetchNextChar '*'
@@ -135,7 +145,7 @@ let assignment() =
    let name = getName()
    matchThenFetchNextChar '='
    expression()
-   sprintf "LEA %c(PC),A0" name |> emitLn
+   sprintf "LEA %s(PC),A0" name |> emitLn
    emitLn "MOVE D0,(A0)"
 
 // Initialize - main program
