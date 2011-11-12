@@ -6,7 +6,7 @@ module Crenshaw.Compiler
 let mutable look = ' '
 
 // Read New Character From Input Stream
-let getChar() = look <- char (System.Console.Read())
+let getChar() = look <- char (System.Console.ReadKey().KeyChar)
 
 // Report an Error
 let error s = 
@@ -18,11 +18,19 @@ let abort s =
    error s
    System.Environment.Exit 1
 
+// Output a String with Tab
+let emit s = printf "\t%s" s
+
+// Output a String with Tab and CRLF
+let emitLn s = 
+   emit s
+   printfn("")
+
 // Report What Was Expected
 let expected s = abort(sprintf "%s Expected" s)
 
-// matches a Specific Input Character
-let matches x = if look = x then getChar() else expected (sprintf "'%c'" x)
+// Match a Specific Input Character
+let matchThenFetchNextChar x = if look = x then getChar() else expected (sprintf "'%c'" x)
 
 // Recognize an Alpha Character
 let isAlpha c = Array.exists (fun elem -> (System.Char.ToUpper c).Equals elem) [|'A'..'Z'|]
@@ -44,31 +52,75 @@ let getNum() =
    getChar()
    returnVal
 
-// Output a String with Tab
-let emit s = printf "\t%s" s
+// Parse and Translate an Identifier
+let ident() =
+   let name = getName()
+   if look.Equals '(' then
+      matchThenFetchNextChar '('
+      matchThenFetchNextChar ')'
+      sprintf "BSR %c" name |> emitLn 
+   else
+      sprintf "MOVE %c(PC),D0" name |> emitLn
 
-// Output a String with Tab and CRLF
-let emitLn s = 
-   emit s
-   printfn("")
+// Horrible big circle of functions: let rec... and ... and... etc.
+// Parse and Translate a Math Factor
+let rec factor() = 
+   if look.Equals '(' then
+      matchThenFetchNextChar '('
+      expression()
+      matchThenFetchNextChar ')'
+   else if isAlpha look then
+      ident()
+   else
+      getNum() |> sprintf "MOVE #%c,D0" |> emitLn
 
-// Get a single number
-let term() = getNum() |> sprintf "MOVE #%c,D0" |> emitLn
+and multiply() =
+   matchThenFetchNextChar '*'
+   factor()
+   emitLn "MULS (SP)+,D0"
 
-let add() =
-   matches '+'
+and divide() =
+   matchThenFetchNextChar '/'
+   factor()
+   emitLn "MOVE (SP)+,D1"
+   emitLn "DIVS D1,D0"
+
+//  Parse and Translate a Math Term
+and term() = 
+   factor()
+   while  look.Equals '*' || look.Equals '/' do
+      emitLn "MOVE D0,-(SP)"
+      if look.Equals('*') then
+         multiply()
+      elif look.Equals('/') then
+         divide()
+      else
+         expected "Mulop" 
+
+// Recognize and Translate an Add
+and add() =
+   matchThenFetchNextChar '+'
    term()
    emitLn "ADD (SP)+,D0"
 
-let subtract() =
-   matches '-'
+// Recognize and Translate a Subtract
+and subtract() =
+   matchThenFetchNextChar '-'
    term()
    emitLn "SUB (SP)+,D0"
    emitLn "NEG D0"
 
-let expression() = 
-   term()
-   while look.Equals '+' || look.Equals '-' do
+// Recognize an Addop
+and isAddOp c =
+   c.Equals '+' || c.Equals '-'
+
+// Parse and Translate an Expression
+and expression() = 
+   if isAddOp look then
+      emitLn "CLR D0"
+   else
+      term()
+   while isAddOp look do
       emitLn "MOVE D0,-(SP)"
       if look.Equals('+') then
          add()
@@ -84,4 +136,6 @@ let init() = getChar()
 let Main args = 
    init()
    expression()
+   if not (look.Equals '\n') then
+      expected "Newline"
    0
