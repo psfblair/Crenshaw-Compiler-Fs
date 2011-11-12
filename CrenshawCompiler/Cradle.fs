@@ -63,6 +63,7 @@ let ident() =
       sprintf "MOVE %c(PC),D0" name |> emitLn
 
 // Horrible big circle of functions: let rec... and ... and... etc.
+// Result of recursive descent.
 // Parse and Translate a Math Factor
 let rec factor() = 
    if look.Equals '(' then
@@ -129,13 +130,21 @@ and expression() =
       else
          expected "Addop" 
 
+// Parse and Translate an Assignment Statement
+let assignment() =
+   let name = getName()
+   matchThenFetchNextChar '='
+   expression()
+   sprintf "LEA %c(PC),A0" name |> emitLn
+   emitLn "MOVE D0,(A0)"
+
 // Initialize - main program
 let init() = getChar()
 
 [<EntryPoint>]
 let Main args = 
    init()
-   expression()
+   assignment()
    if not (look.Equals '\n') then
       expected "Newline"
    0
