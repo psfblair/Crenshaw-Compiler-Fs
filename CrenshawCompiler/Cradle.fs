@@ -29,9 +29,6 @@ let emitLn s =
 // Report What Was Expected
 let expected s = abort(sprintf "%s Expected" s)
 
-// Match a Specific Input Character
-let matchThenFetchNextChar x = if look = x then getChar() else expected (sprintf "'%c'" x)
-
 // Recognize an Alpha Character
 let isAlpha c = Array.exists (fun elem -> (System.Char.ToUpper c).Equals elem) [|'A'..'Z'|]
 
@@ -39,8 +36,23 @@ let isAlpha c = Array.exists (fun elem -> (System.Char.ToUpper c).Equals elem) [
 let isDigit c = Array.exists (fun elem -> c.Equals elem) [|'0'..'9'|]
 
 // Recognize an Alphanumeric
-let isAlNum c =
-   isAlpha c || isDigit c
+let isAlNum c = isAlpha c || isDigit c
+
+// Recognize White Space
+let isWhite c = Array.exists (fun elem -> c.Equals elem) [|' '; '\t'|]
+
+// Skip Over Leading White Space
+let skipWhite() = 
+   while isWhite look do
+      getChar()
+   done
+
+// Match a Specific Input Character
+let matchThenFetchNextChar x = 
+   if look = x then 
+      getChar()
+      skipWhite()
+   else expected (sprintf "'%c'" x)
 
 // Get an Identifier
 let getName() = 
@@ -50,6 +62,7 @@ let getName() =
       token <- token + (System.Char.ToUpper look).ToString()
       getChar()
    done
+   skipWhite()
    token
 
 // Get a Number
@@ -60,6 +73,7 @@ let getNum() =
       value <- value + (System.Char.ToUpper look).ToString()
       getChar()
    done
+   skipWhite()
    value
 
 // Parse and Translate an Identifier
@@ -149,7 +163,9 @@ let assignment() =
    emitLn "MOVE D0,(A0)"
 
 // Initialize - main program
-let init() = getChar()
+let init() = 
+   getChar()
+   skipWhite()
 
 [<EntryPoint>]
 let Main args = 
